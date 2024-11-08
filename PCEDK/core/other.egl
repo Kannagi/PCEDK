@@ -1,0 +1,123 @@
+
+func PCEDK_WaitVblank:
+{
+	vblank.counter = 0
+	vblank.enable = 1
+	
+	
+	do
+	{
+		asm "sed";
+		
+		vblank.counter += 1
+		
+		asm "cld";
+	}
+	while vblank.enable != 0
+	call PCE_VDC: VCE_RCR , 0x0116
+	call PCEDK_JOYPAD:
+	call PCE_VDC: VCE_BXR,PCEDK.BGX
+	call PCE_VDC: VCE_BYR,PCEDK.BGY
+	
+}
+
+func PCEDK_WRAM_CLEAR:
+{
+	spm uint16 count
+	spm uint16 ptr
+	ptr  = 0x2200
+	
+	count = 0x1E00
+	do
+	{
+		@ptr = 0
+		ptr += 1
+		
+		if ptr == 0x4000
+		{
+			return
+		}
+		
+	} while 1 == 1
+	
+}
+
+funclib PCE_VDC:uint8 st0, uint8 st1, uint8 st2
+{
+	opcode_st.value1 = st0
+	opcode_st.value2 = st1
+	opcode_st.value3 = st2
+	
+	asm "jmp $3C00"
+}
+
+funclib PCE_VDC2:uint8 st1, uint8 st2
+{
+	opcode_st.value2 = st1
+	opcode_st.value3 = st2
+	
+	asm "jmp $3C02"
+}
+
+funclib PCE_TIA:uint16 src, uint16 dst, uint16 size
+{
+	opcode_tia.src = src
+	opcode_tia.dst = dst
+	opcode_tia.size = size
+	
+	asm "jmp $3C07"
+}
+
+func PCEDK_JOYPAD:
+{
+	
+	PCE_GAMEPAD = 1
+	PCE_GAMEPAD = 3
+	PCE_GAMEPAD = 1
+	
+	asm "
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	"
+	acc = PCE_GAMEPAD ^ 0x0F
+	PCEDK_JOYPAD1 = acc & 0x0F
+	PCE_GAMEPAD = 0
+
+	asm "
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	"
+
+	acc = PCE_GAMEPAD ^ 0x0F
+	acc =  acc << 4
+	PCEDK_JOYPAD1 |= acc
+}
+
+funclib PCEDK_ScreenEnable:
+{
+	LVDC_STATUS
+	IRQ_DISABLE = 5
+	IRQ_STATUS = 5
+	
+	call PCE_VDC: VCE_CR,(0xCC | FORCE16B )
+	asm "cli"
+}
+
+funclib PCEDK_ScreenDisable:
+{
+	LVDC_STATUS
+	IRQ_DISABLE = 7
+	IRQ_STATUS = 7
+	
+	call PCE_VDC: VCE_CR,(0x00 | FORCE16B )
+	asm "sei"
+	asm "nop"
+}

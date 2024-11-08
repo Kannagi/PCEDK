@@ -1,0 +1,64 @@
+
+func PCEDK_SpriteClearY:
+{
+	idy = 32
+	idx = 0
+	
+	do
+	{
+		acc = 0
+		[PCEDK_SPR.y,idx,uint16] = acc
+		[PCEDK_SPRH.y,idx,uint16] = acc
+		
+		idx += 8
+		
+		acc = 0
+		[PCEDK_SPR.y,idx,uint16] = acc
+		[PCEDK_SPRH.y,idx,uint16] = acc
+		
+		idx += 8
+	}
+	loop idy == 0
+}
+
+func PCEDK_SpriteClearYP:
+{
+	
+	call PCE_VDC: VCE_MAWR,0x7F00
+	ST0_VWR
+	
+	call PCE_TIA: $PCEDK_DATA_ZERO:,VDC_DATA,0x100
+	call PCE_TIA: $PCEDK_DATA_ZERO:,VDC_DATA,0x100
+}
+
+func PCEDK_SpriteClear:
+{
+	idy = 32
+	idx = 0
+	
+	do
+	{
+		acc = 0
+		
+		[PCEDK_SPR.y,idx,uint16] = acc
+		[PCEDK_SPR.x,idx,uint16] = acc
+		[PCEDK_SPR.tile,idx,uint16] = acc
+		[PCEDK_SPR.palfs,idx,uint16] = acc
+		
+		[PCEDK_SPRH.y,idx,uint16] = acc
+		[PCEDK_SPRH.x,idx,uint16] = acc
+		[PCEDK_SPRH.tile,idx,uint16] = acc
+		[PCEDK_SPRH.palfs,idx,uint16] = acc
+		
+		idx += 8
+	}
+	loop idy == 0
+}
+
+func PCEDK_VDC_SPRITE:
+{
+	call PCE_VDC: VCE_MAWR,0x7F00
+	ST0_VWR
+	
+	call PCE_TIA: $PCEDK_SPR.y ,VDC_DATA,0x200
+}

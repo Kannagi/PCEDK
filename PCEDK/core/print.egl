@@ -1,0 +1,287 @@
+
+.macro PRINT_POSITION
+	lib uint16 vram
+	py = py<<6
+	vram = 0x720
+	vram += px
+	vram += py
+	
+	call PCE_VDC: 0,vram
+	asm "st0 2"
+
+.endmacro
+
+
+funclib PCEDK_PrintLine: uint16 tadr,uint8 px,uint8 py,uint8 pal
+{
+	lib uint16 stk 4
+	
+	lib uint16 adr
+	
+	adr = tadr
+	
+	PRINT_POSITION
+
+	
+	idx = px << 1
+	idy = 16
+	do
+	{	
+		acc = @adr
+		acc += 0x60
+		SVDC_DATAL
+		
+		acc = pal
+		SVDC_DATAH
+		
+		adr +=1
+		idx+=2
+		
+		acc = @adr
+	}
+	while acc != 0
+}
+
+.macro PRINT_HEXA
+	acc = acc & 0xF;
+	if acc >= 0xA
+	{
+		acc += 7;
+	}
+	acc += 0x90;
+.endmacro
+
+.macro PRINT_DECIMAL100
+	if tnumber >= 100
+	{
+		tnumber -= 100;
+		.arg1 += 1;
+	}
+	
+	if tnumber >= 100
+	{
+		tnumber -= 100;
+		.arg1 += 1;
+	}
+
+.endmacro
+
+.macro PRINT_DECIMAL
+	//5
+	if tnumber >= .arg1
+	{
+		tnumber -= .arg1;
+		.arg4 += 5;
+	}
+	
+	//2
+	if tnumber >= .arg2
+	{
+		tnumber -= .arg2;
+		.arg4 += 2;
+	}
+	
+	//2
+	if tnumber >= .arg2
+	{
+		tnumber -= .arg2;
+		.arg4 += 2;
+	}
+	
+	//1
+	if tnumber >= .arg3
+	{
+		tnumber -= .arg3;
+		.arg4 += 1;
+	}
+
+.endmacro
+
+
+funclib SNDK_PrintNumber8:uint8 number,uint8 px,uint8 py,uint8 pal;
+{
+	lib uint16 stk 4
+	
+	lib uint8 tnumber1,tnumber2,tnumber;
+	tnumber = number;
+	tnumber1 = 0x90;
+	tnumber2 = acc;
+	
+	PRINT_POSITION
+	
+	PRINT_DECIMAL100 tnumber1
+	acc = tnumber1
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	PRINT_DECIMAL 50,20,10,tnumber2
+	acc = tnumber2
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = tnumber + 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+}
+
+funclib SNDK_PrintHexa8:uint8 tnumber,uint8 px,uint8 py,uint8 pal;
+{
+	lib uint16 stk 4
+	lib uint8 number
+	number = tnumber
+	PRINT_POSITION
+	
+	acc = number>>4
+	PRINT_HEXA
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number
+	PRINT_HEXA
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+}
+
+funclib SNDK_PrintHexa16:uint16 tnumber,uint8 px,uint8 py,uint8 pal
+{
+	lib uint16 stk 4
+	lib uint8 number,number2
+	number = tnumber>>8
+	number2 = tnumber
+	
+	PRINT_POSITION
+	
+	acc = number>>4
+	PRINT_HEXA
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number
+	PRINT_HEXA
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number2>>4
+	PRINT_HEXA
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number2
+	PRINT_HEXA
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+}
+
+
+funclib SNDK_PrintDec2:uint8 tnumber,uint8 px,uint8 py,uint8 pal
+{
+	lib uint16 stk 4
+	lib uint8 number
+	number = tnumber
+	PRINT_POSITION
+	
+	acc = number >>4
+	acc += 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number & 0x0F
+	acc += 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+}
+
+funclib SNDK_PrintDec4:uint16 tnumber,uint8 px,uint8 py,uint8 pal
+{
+	lib uint16 stk 4
+	lib uint8 number,number2
+	number = tnumber>>8
+	number2 = tnumber
+	PRINT_POSITION
+	
+	acc = number >>4
+	acc += 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number & 0x0F
+	acc += 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number2 >>4
+	acc += 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+	
+	acc = number2 & 0x0F
+	acc += 0x90
+	SVDC_DATAL
+	acc = pal
+	SVDC_DATAH
+}
+
+PCEDK_CPU_DATA1:
+.data.b 0x00,0x34,0x68
+
+PCEDK_CPU_DATA2:
+.data.b 0x00,0x03,0x07,0x10,0x14
+.data.b 0x17,0x20,0x24,0x27,0x31
+
+func PCEDK_PrintCPU:
+{
+	lib uint8 cpu,tcpu,tcpu1,tcpu2,tcpu3
+	
+	tcpu = vblank.counter>>8
+	
+	tcpu1 = tcpu>>4
+	tcpu2 = tcpu&0xF
+	tcpu3 = vblank.counter
+	
+	tcpu1 = [PCEDK_CPU_DATA1:,tcpu1]
+	tcpu2 = [PCEDK_CPU_DATA2:,tcpu2]
+	
+	cpu = 0	
+	if tcpu3 >= 0x25
+	{
+		cpu +=1
+	}
+	
+	if tcpu3 >= 0x50
+	{
+		cpu +=1
+	}
+	
+	if tcpu3 >= 0x75
+	{
+		cpu +=1
+	}
+	
+	asm "sed"
+	cpu += tcpu1
+	cpu += tcpu2
+	
+	cpu = 0x99 - cpu
+	
+	asm "cld"
+	
+	call SNDK_PrintDec2: cpu,29,2,0
+	acc = 0x85
+	SVDC_DATAL
+	acc = 0
+	SVDC_DATAH
+}

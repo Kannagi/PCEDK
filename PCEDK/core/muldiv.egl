@@ -1,0 +1,40 @@
+/*
+ *  codebase64.org
+ *  by White Flame 2003-02-07
+ */
+
+
+func higueul_mul:
+{
+	asm "
+	
+	;lda #0
+	beq .higueul_stdlib_mul_enterLoop
+
+	.higueul_stdlib_mul_doAdd:
+	clc
+	adc 214
+
+	.higueul_stdlib_mul_loop:
+	asl 214
+	.higueul_stdlib_mul_enterLoop:
+	lsr 216
+	bcs .higueul_stdlib_mul_doAdd
+	bne .higueul_stdlib_mul_loop
+
+	";
+}
+
+
+
+func higueul_div:
+{
+	asm "
+	
+	lda #0
+
+
+	";
+}
+
+

@@ -1,0 +1,60 @@
+
+
+proc _IRQ:
+{
+	
+	asm "
+	php
+	pha
+	"
+	LVDC_STATUS
+	PCE_STAT_IRQ = acc
+	if acc & 0x20
+	{
+		vblank.enable = 0
+		call PCE_VDC: VCE_MWR,(0x10 | FORCE16B )
+		
+	}else
+	{
+		call PCE_VDC: VCE_CR,(0x8C | FORCE16B )
+		call PCE_VDC: VCE_MWR,(0x50 | FORCE16B )
+		call PCE_VDC: VCE_BXR,0x100
+		call PCE_VDC: VCE_BYR,(0xE0 | FORCE16B )		
+		call PCEDK_VDC_SPRITE:
+	}
+	
+	
+	IRQ_STATUS = PCE_STAT_IRQ
+	asm "
+	pla
+	plp
+	rti
+	";
+
+}
+
+proc _NMI:
+{
+	asm "rti";
+}
+
+proc _TIMER:
+{
+	asm "rti";
+}
+
+
+
+proc _BRK:
+{
+	asm "rti";
+}
+
+.org 0x1FF6
+.data.w _BRK
+.data.w _IRQ
+.data.w _TIMER
+.data.w _NMI
+.data.w 0xE000 //Start
+
+.code 0xA000

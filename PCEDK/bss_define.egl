@@ -1,0 +1,213 @@
+
+.map.func 0x2200
+.map.funcspm 0xF0
+.map.funclib 0xE0
+.map.spm 0x00
+.map.lib 0x80
+
+.define SAVEX   asm "phx";
+.define RESTOREX asm "plx";
+
+.define SAVEY   asm "phx";
+.define RESTOREY asm "plx";
+
+.define BANKSW1 .code 0x4000
+.define BANKSW2 .code 0x6000
+.define BANKSW3 .code 0x8000
+
+.define LVDC_STATUS .data.b 0xAD,0,0
+.define SVDC_STATUS .data.b 0x8D,0,0
+
+.define SVDC_DATAL .data.b 0x8D,2,0
+.define SVDC_DATAH .data.b 0x8D,3,0
+
+.define FORCE16B 0x10000
+.define VCE_MAWR 0x00
+
+.define VCE_MARR 0x01
+.define VCE_VRWR 0x01
+
+.define VCE_VWR 0x02
+.define VCE_VRR 0x02
+
+.define VCE_CR  0x05
+.define VCE_RCR 0x06
+.define VCE_BXR 0x07
+.define VCE_BYR 0x08
+.define VCE_MWR 0x09
+
+.define VCE_HPR 0x0A
+.define VCE_HDR 0x0B
+.define VCE_VSR 0x0C
+.define VCE_VDR 0x0D
+.define VCE_VCR 0x0E
+
+.define VCE_DCR 0x0F
+
+.define VCE_SOUR 0x10
+.define VCE_DESR 0x11
+.define VCE_LENR 0x12
+
+.define VCE_SATB 0x13
+
+.define VDC_DATA 0x10002
+
+.define ST0_VWR asm "st0 2";
+
+
+.bss 0xD0
+
+
+
+
+.bss 0x0000
+uint8 VDC_STATUS
+uint8 VDC_STATUSH
+
+uint8 VDC_DATAL
+uint8 VDC_DATAH
+
+.bss 0x0400
+uint8 VCE_CONTROL
+uint8 VCE_CONTROLH
+uint16 VCE_CTADDR
+uint8 VCE_CTWL
+uint8 VCE_CTWH
+
+.bss 0x0C00
+uint8 TIMER_COUNTER
+uint8 TIMER_CONTROL
+
+.bss 0x1000
+uint8 PCE_GAMEPAD
+
+.bss 0x1402
+uint8 IRQ_DISABLE
+uint8 IRQ_STATUS
+
+
+.bss 0x3C00
+uint8 opcode_st.st0
+uint8 opcode_st.value1
+uint8 opcode_st.st1
+uint8 opcode_st.value2
+uint8 opcode_st.st2
+uint8 opcode_st.value3
+uint8 opcode_st.rts
+
+uint8 opcode_tia.opc
+uint16 opcode_tia.src
+uint16 opcode_tia.dst
+uint16 opcode_tia.size
+uint8 opcode_tia.rts
+
+uint16 vblank.counter
+uint8 vblank.enable
+
+uint16 PCEDK.BGX,PCEDK.BGY
+
+uint8 PCEDK_JOYPAD1
+uint8 PCEDK_JOYPAD2
+
+uint16 PCEDK_SPR.y
+uint16 PCEDK_SPR.x
+uint16 PCEDK_SPR.tile
+uint16 PCEDK_SPR.palfs
+uint8 PCEDK_SPR (0x100 - 8)
+uint16 PCEDK_SPRH.y
+uint16 PCEDK_SPRH.x
+uint16 PCEDK_SPRH.tile
+uint16 PCEDK_SPRH.palfs
+uint8 PCEDK_SPRH (0x100 - 8)
+
+uint8 PCE_STAT_IRQ
+
+uint16 DEBUG16
+uint8 DEBUG8
+
+//-----------------
+.define PCEDK_JOYPAD_UP    0x01
+.define PCEDK_JOYPAD_RIGHT 0x02
+.define PCEDK_JOYPAD_DOWN  0x04
+.define PCEDK_JOYPAD_LEFT  0x08
+
+.define PCEDK_JOYPAD_B 0x10
+.define PCEDK_JOYPAD_A 0x20
+.define PCEDK_JOYPAD_SELECT 0x40
+.define PCEDK_JOYPAD_START 0x80
+
+.define SPR_INDEX1 0x00
+.define SPR_INDEX2 0x08
+.define SPR_INDEX3 0x10
+.define SPR_INDEX4 0x18
+.define SPR_INDEX5 0x20
+.define SPR_INDEX6 0x28
+.define SPR_INDEX7 0x30
+.define SPR_INDEX8 0x38
+.define SPR_INDEX9 0x40
+.define SPR_INDEX10 0x48
+.define SPR_INDEX11 0x50
+.define SPR_INDEX12 0x58
+.define SPR_INDEX13 0x60
+.define SPR_INDEX14 0x68
+.define SPR_INDEX15 0x70
+.define SPR_INDEX16 0x78
+.define SPR_INDEX17 0x80
+.define SPR_INDEX18 0x88
+.define SPR_INDEX19 0x90
+.define SPR_INDEX20 0x98
+.define SPR_INDEX21 0xA0
+.define SPR_INDEX22 0xA8
+.define SPR_INDEX23 0xB0
+.define SPR_INDEX24 0xB8
+.define SPR_INDEX25 0xC0
+.define SPR_INDEX26 0xC8
+.define SPR_INDEX27 0xD0
+.define SPR_INDEX28 0xD8
+.define SPR_INDEX29 0xE0
+.define SPR_INDEX30 0xE8
+.define SPR_INDEX31 0xF0
+.define SPR_INDEX32 0xF8
+
+
+//------------------
+.macro BANK
+
+.org ( .arg1 * 0x2000  )
+.rodata ( 0x4000 + 0x2000*.arg2 )
+
+.endmacro
+
+.macro PCEDK_UploadPAL
+	VCE_CTADDR = (.arg1 | FORCE16B )
+	ST0_VWR
+
+	call PCE_TIA: $.arg2:,$VCE_CTWL,(.arg3 | FORCE16B )
+
+.endmacro
+
+.macro PCEDK_UploadVRAM
+	call PCE_VDC: VCE_MAWR,(.arg1 | FORCE16B )
+	ST0_VWR
+
+	call PCE_TIA: $.arg2:,VDC_DATA,(.arg3 | FORCE16B )
+
+.endmacro
+
+.macro PCEDK_InitSPR
+idx = .arg1
+[PCEDK_SPR.y,idx,uint16] = (.arg3  | FORCE16B )
+[PCEDK_SPR.x,idx,uint16] = (.arg2  | FORCE16B )
+[PCEDK_SPR.tile,idx,uint16] = (.arg4>>5 )
+[PCEDK_SPR.palfs,idx,uint16] = .arg5
+
+.endmacro
+
+.macro PCEDK_InitSPRH
+idx = .arg1
+[PCEDK_SPRH.y,idx,uint16] = (.arg3  | FORCE16B )
+[PCEDK_SPRH.x,idx,uint16] = (.arg2  | FORCE16B )
+[PCEDK_SPRH.tile,idx,uint16] = (.arg4>>5 )
+[PCEDK_SPRH.palfs,idx,uint16] = .arg5
+
+.endmacro

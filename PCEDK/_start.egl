@@ -1,0 +1,143 @@
+
+
+.macro SWITCH_BANK1
+acc = .arg1
+asm "tam $04"
+.endmacro
+
+.macro SWITCH_BANK2
+acc = .arg1
+asm "tam $08"
+.endmacro
+
+.macro SWITCH_BANK3
+acc = .arg1
+asm "tam $10"
+.endmacro
+
+.org 0x0000
+.code 0xE000
+proc _start:
+{
+	asm "
+	sei
+	nop
+	csh
+	nop
+	cld
+	
+	ldx #$FE
+	txs
+	
+	;work RAM
+	lda #$F8
+	tam $02
+	
+	;hardware I/O
+	lda #$FF
+	tam $01
+	
+	;ROM SWITCH BANK
+	lda #$03
+	tam $04
+	
+	lda #$04
+	tam $08
+	
+	lda #$05
+	tam $10
+	
+	;ROM 
+	lda #$01
+	tam $20
+	
+	lda #$02
+	tam $40
+	
+	lda #$00
+	tam $80
+	
+	
+	
+	";
+	
+	LVDC_STATUS
+	acc = 7
+	IRQ_DISABLE = acc
+	IRQ_STATUS = acc
+	TIMER_CONTROL = 0
+		
+	opcode_st.st0 = 0x03
+	opcode_st.st1 = 0x13
+	opcode_st.st2 = 0x23
+	opcode_st.rts = 0x60
+	
+	opcode_tia.opc = 0xE3
+	opcode_tia.rts = 0x60
+	
+	call PCE_VDC: VCE_CR,(0x00 | FORCE16B )
+	call PCE_VDC: VCE_RCR,(0x40 | FORCE16B )
+	
+	call PCE_VDC: VCE_BXR,(0x00 | FORCE16B )
+	call PCE_VDC: VCE_BYR,(0x00 | FORCE16B )
+	
+	call PCE_VDC: VCE_MWR,(0x10 | FORCE16B ) //64x32
+	
+	call PCE_VDC: VCE_HPR,0x0202
+	call PCE_VDC: VCE_HDR,0x031F //0x041F
+	
+	call PCE_VDC: VCE_VSR,0xF02//0x0703
+	call PCE_VDC: VCE_VDR,(0xEF | FORCE16B )
+	call PCE_VDC: VCE_VCR,(0x03 | FORCE16B )
+	
+	call PCE_VDC: VCE_DCR,(0x10 | FORCE16B )
+	
+	call PCE_VDC: VCE_SATB,0x7F00
+	
+	VCE_CONTROL = 0
+	
+	//Clear Pal
+	VCE_CTADDR = (0x000 | FORCE16B )
+	ST0_VWR
+	idy = 4
+	do
+	{
+		call PCE_TIA: $PCEDK_DATA_ZERO:,$VCE_CTWL,0x100
+		
+	} loop idy == 0
+	
+	
+	//Clear VRAM
+	call PCE_VDC: VCE_MAWR,(0x0000 | FORCE16B )
+	ST0_VWR
+	
+	idy = 0x80
+	do
+	{
+		call PCE_TIA: $PCEDK_DATA_ZERO:,VDC_DATA,0x100
+		call PCE_TIA: $PCEDK_DATA_ZERO:,VDC_DATA,0x100
+		
+	} loop idy == 0
+
+	call PCEDK_WRAM_CLEAR:
+	
+	opcode_st.st0 = 0x03
+	opcode_st.st1 = 0x13
+	opcode_st.st2 = 0x23
+	opcode_st.rts = 0x60
+	
+	opcode_tia.opc = 0xE3
+	opcode_tia.rts = 0x60
+
+	call PCEDK_SpriteClear:
+	
+	
+	jump main:
+}
+
+PCEDK_DATA_ZERO:
+
+.data.q 0,0,0,0,0,0,0,0
+.data.q 0,0,0,0,0,0,0,0
+.data.q 0,0,0,0,0,0,0,0
+.data.q 0,0,0,0,0,0,0,0

@@ -1,0 +1,38 @@
+
+//DATA BANK SWITCH
+BANK 3,0 
+HERO_SPR:
+.incbin "DATA/hero.spr"
+
+
+
+BANK 4,1
+
+
+BANK 5,0
+MAP1_TILE:
+.incbin "DATA/test.ktm"
+
+
+
+BANK 6,0
+MAP1_SPR:
+.incbin "DATA/map/tile_tg_0.spr"
+.incbin "DATA/map/tile_tg_1.spr"
+BANK 7,1
+.incbin "DATA/map/tile_tg_2.spr"
+
+
+BANK 8,0
+MAP2_SPR:
+.incbin "DATA/tile_tg.spr"
+
+
+BANK 11,0
+MAP3_SPR:
+.incbin "DATA/plateformer.spr"
+
+BANK 14,0
+MAP2_TILE:
+.incbin "DATA/testplf.ktm"
+.org 0x40000

@@ -1,0 +1,20 @@
+
+
+#options:-debug -asm
+#options:-cycle
+#cmd_execute: pwd
+options:-huc6280 -asm -mesen
+
+
+add_file:PCEDK/bss_define.egl;
+add_file:PCEDK/_start.egl;
+add_folder:PCEDK/core;
+add_file:PCEDK/IRQ.egl;
+
+#file
+add_file:main.egl;
+add_folder:src;
+add_file:data.egl;
+
+compiler_run:demo.pce
+

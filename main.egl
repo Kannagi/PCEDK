@@ -1,0 +1,490 @@
+
+/*
+
+IO
+RAM
+
+DATA
+
+DATA
+DATA
+
+CODE GAME
+CODE GAME
+
+CODE SDK/BOOT
+ */
+
+
+
+funclib PCEDK_LoadMap: uint8 bank,uint16 label
+{
+	PCEDK.BGY = 0x00
+	PCEDK.BGX = 0x00
+	
+	SWITCH_BANK1 bank
+	bank += 1
+	SWITCH_BANK2 bank
+	lib uint8 data1,data2,nline
+	lib uint16 adr
+	
+	lib uint16 adr1,adr2
+	if label == 0
+	{
+			label = 0x4000
+	}
+	adr = label
+	
+	adr1 = adr
+	adr2 = adr + 0x100
+			
+	call PCE_VDC: VCE_MAWR,(0x0000 | FORCE16B )
+	ST0_VWR
+	
+	nline = 0;
+	do
+	{
+		idx = 16
+		idy = 0
+		do
+		{
+			data1 = [@adr1,idy]
+			SVDC_DATAL
+			data2 = [@adr2,idy]
+			SVDC_DATAH
+			
+			acc = data1 + 1
+			SVDC_DATAL
+			
+			acc = data2
+			SVDC_DATAH
+			
+			idy += 1
+			
+		}loop idx == 0
+		
+		acc = 0x00
+		idy = 16
+		do
+		{			
+			SVDC_DATAL
+			SVDC_DATAH
+			
+			SVDC_DATAL
+			SVDC_DATAH
+			
+		}loop idy == 0
+		
+		//-----------
+		idx = 16
+		idy = 0
+		do
+		{
+			data1 = [@adr1,idy] + 0x10
+			SVDC_DATAL
+			
+			acc = [@adr2,idy]
+			asm "adc #0"
+			data2 = acc;
+			SVDC_DATAH
+			
+			acc = data1 + 1
+			SVDC_DATAL
+			
+			acc = data2
+			SVDC_DATAH
+			
+			idy += 1
+			
+		}loop idx == 0
+		
+		
+		acc = 0x00
+		idy = 16
+		do
+		{
+			SVDC_DATAL
+			SVDC_DATAH
+			
+			SVDC_DATAL
+			SVDC_DATAH
+			
+		}loop idy == 0
+		
+		adr1 += 0x10
+		adr2 += 0x10
+		
+		if nline == 15
+		{
+			return
+		}
+		nline += 1
+	}
+	while 1 == 1
+}
+
+
+funclib PCEDK_ScrollingH: uint8 bank,uint16 label,uint8 dir
+{
+	lib uint8 mtile,add
+	lib uint8 data1,data2,nline
+	lib uint16 adr1,adr2,vram,tbgx,adds
+	
+	SWITCH_BANK1 bank
+	bank += 1
+	SWITCH_BANK2 bank
+	
+	acc = PCEDK.BGX>>8
+	if acc & 0x80
+	{
+		PCEDK.BGX = 0;
+	}
+	
+	if dir == 0
+	{
+		adds = 0x200
+		add = 0x20
+		acc = PCEDK.BGX>>8	
+		if acc & 1
+		{
+			add = 0
+		}
+	}
+	else
+	{
+		adds = 0
+		add = 0
+		acc = PCEDK.BGX>>8	
+		if acc & 1
+		{
+			add = 0x20
+		}
+	}
+	
+	vram = 0
+	acc = PCEDK.BGX
+	acc = acc >> 3
+	acc += add
+	acc &= 0x3F
+	vram = acc
+	mtile = acc & 1
+	
+	acc = PCEDK.BGX >> 8
+	acc = acc& 0x3F
+	tbgx = acc<<1
+	tbgx = tbgx << 8
+
+	acc = PCEDK.BGX & 0xF0
+	acc = acc>>4
+	
+	tbgx = acc
+	
+	tbgx += adds
+
+	adr1 = tbgx + 0x4000
+	adr2 = tbgx + 0x4100
+	
+	call PCE_VDC: VCE_CR,0x10CC
+	
+	call PCE_VDC: VCE_MAWR,vram
+	ST0_VWR
+	
+	idy = 0
+	idx = 13
+	do
+	{
+		data1 = [@adr1,idy] + mtile
+		SVDC_DATAL
+		
+		data2 = [@adr2,idy]
+		SVDC_DATAH
+		
+		acc = data1 + 0x10
+		SVDC_DATAL
+		
+		acc = data2
+		asm "adc #0"
+		SVDC_DATAH
+		
+		idy += 0x10
+		
+	}loop idx == 0
+	
+	call PCE_VDC: VCE_CR,(0xCC | FORCE16B )
+}
+
+.define SPR_SIZE16H 0x0000
+.define SPR_SIZE32H 0x1000
+.define SPR_SIZE64H 0x2000
+
+.define SPR_SIZE16W 0x000
+.define SPR_SIZE32W 0x100
+
+.define SPR_FLIPV 0x8000
+.define SPR_FLIPH 0x800
+.define SPR_PRIO 0x80
+
+.define SLT_PAL0 0
+.define SLT_PAL1 1
+.define SLT_PAL2 2
+.define SLT_PAL3 3
+.define SLT_PAL4 4
+.define SLT_PAL5 5
+.define SLT_PAL6 6
+.define SLT_PAL7 7
+.define SLT_PAL8 8
+.define SLT_PAL9 9
+.define SLT_PAL10 10
+.define SLT_PAL11 11
+.define SLT_PAL12 12
+.define SLT_PAL13 13
+.define SLT_PAL14 14
+.define SLT_PAL15 15
+
+
+funclib PCEDK_InitSprite: uint8 index,uint16 px,uint16 py,uint16 tile,uint16 palfs
+{
+	idx = index
+	[PCEDK_SPR.x,idx] = px
+	[PCEDK_SPR.y,idx] = py
+	[PCEDK_SPR.tile,idx] = tile 
+	[PCEDK_SPR.palfs,idx] = palfs
+	
+}
+
+.endmacro
+
+
+funclib PCEDK_EraseLine: uint8 nline
+{
+	lib uint16 adrline
+	adrline = 0x720
+	
+	
+	if nline == 1
+	{
+		adrline = 0x760
+	}
+	
+	if nline == 2
+	{
+		adrline = 0x7A0
+	}
+	
+	if nline == 3
+	{
+		adrline = 0x7E0
+	}
+	
+	call PCE_VDC: VCE_MAWR,adrline
+	ST0_VWR
+	
+	idy = 0x20
+	acc = 0x80
+	do
+	{
+		SVDC_DATAL
+		SVDC_DATAH
+		
+	} loop idy == 0
+}
+
+proc main:
+{
+	
+	PCEDK_UploadPAL 0x10000,PCEDK_FONT_PAL,0x10020
+	PCEDK_UploadVRAM 0x800,PCEDK_FONT_SPR,0x1000
+	
+	spm uint16 tmp
+	PCEDK_UploadPAL 0x100,HERO_PAL,0x10020
+	PCEDK_UploadVRAM 0x4000,HERO_SPR,0x1000
+	
+	PCEDK_UploadPAL 0x110,SHIP_PAL,0x10020
+	PCEDK_UploadVRAM 0x6000,SHIP_SPR,0x1000
+	
+	PCEDK_UploadPAL 0x40,MAP3_PAL,0x180
+	
+	SWITCH_BANK1 11
+	SWITCH_BANK2 12
+	SWITCH_BANK3 13
+	PCEDK_UploadVRAM 0x1000,MAP3_SPR,0x6000
+	
+	tmp = (SPR_SIZE32H | SPR_SIZE32W | SPR_PRIO | SPR_PAL0)
+	PCEDK_InitSPR SPR_INDEX1,0x50,0xC7,0x4000,tmp //SPR INDEX, PositionX, PositionY , VRAM ADDRESS , pal / flip / other
+	//PCEDK_InitSPR SPR_INDEX2,0x20,0x40,0x4000,tmp
+	//PCEDK_InitSPR SPR_INDEX3,0x80,0x80,0x4000,tmp
+	
+	tmp = (SPR_SIZE32H | SPR_SIZE32W | SPR_SIZE32W | SPR_PRIO | SPR_PAL1)
+	//PCEDK_InitSPR SPR_INDEX4,0x90,0x90,0x6000,tmp
+		
+	uint8 tile.bank,scroll.direction
+	uint16 tile.adr
+	
+	tile.bank = 14
+	scroll.direction = 0
+	tile.adr = $MAP2_TILE:
+	
+	call PCEDK_LoadMap: tile.bank,tile.adr
+	
+	call PCEDK_EraseLine: 0
+	call PCEDK_EraseLine: 1
+	call PCEDK_EraseLine: 2
+	call PCEDK_EraseLine: 3
+
+
+	call PCEDK_PrintLine: $STR_HELLOWORLD:,1,2,0
+	
+	call SNDK_PrintNumber8: 52,0,0,0
+	
+	call SNDK_PrintHexa16: 0x13AF,8,0,0
+	
+	call SNDK_PrintDec4: 0x2569,16,0,0
+	
+	uint16 posx
+	posx = 0x50
+	
+	spm uint16 vitx,vity
+	spm uint8 tmpv,ok1
+	
+	call PCEDK_ScreenEnable:
+	do
+	{
+		idx = SPR_INDEX1
+		
+		
+		vitx = 0
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_UP 
+		{
+			//[PCEDK_SPR.y,idx] -=1
+		}
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_DOWN 
+		{
+			//[PCEDK_SPR.y,idx] +=1
+		}
+		
+		//[PCEDK_SPR.x,idx] = posx - PCEDK.BGX
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_RIGHT
+		{
+			//[PCEDK_SPR.x,idx] +=1
+			//PCEDK.BGX += 1
+			//scroll.direction = 0
+			vitx = 1
+		}
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_LEFT
+		{
+			//[PCEDK_SPR.x,idx] -=1
+			//PCEDK.BGX -= 1
+			//scroll.direction = 1
+			vitx = (-1)
+		}
+		
+		PCEDK_SPR.palfs |= 0x80
+		
+		
+		acc = PCEDK_SPR.x 
+		acc += vitx
+		tmpv = acc
+		if acc >= 0xA8
+		{
+			vitx = 0
+			PCEDK.BGX += 1
+			scroll.direction = 0
+		}
+		
+		
+		
+		if PCEDK.BGX == 0
+		{
+			
+		}
+		else
+		{
+			ok1 += 1
+			if tmpv <= 0x60
+			{
+				vitx = 0
+				PCEDK.BGX -= 1
+				scroll.direction = 1
+			}
+		
+		}
+		
+		if tmpv <= 0x20
+		{
+			vitx = 0
+		}	
+		
+		[PCEDK_SPR.x,idx] += vitx
+		
+		call SNDK_PrintHexa16: PCEDK.BGX,8,0,0
+		
+		//call SNDK_PrintHexa8: ok1,24,0,0
+		
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_A
+		{
+			PCEDK_SPR.y += 1
+		}
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_B
+		{
+			PCEDK_SPR.y -= 1
+		}
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_SELECT
+		{
+			//PCEDK_SPR.x += 3
+		}
+		
+		if PCEDK_JOYPAD1 & PCEDK_JOYPAD_START
+		{
+			//PCEDK_SPR.x -= 3
+		}
+		
+		call PCEDK_ScrollingH: tile.bank,tile.adr,scroll.direction
+		idx = SPR_INDEX1
+		//[PCEDK_SPR.x,idx] = posx - PCEDK.BGX
+		
+		call PCEDK_PrintCPU:
+		
+		call PCEDK_WaitVblank:
+	}
+	while 1 == 1
+	
+}
+
+
+
+SHIP_SPR:
+.incbin "DATA/ship.spr"
+
+SHIP_PAL:
+.incbin "DATA/ship.pal"
+
+HERO_PAL:
+.incbin "DATA/hero.pal"
+
+MAP1_PAL:
+.incbin "DATA/map/tile_tg_0.pal"
+.incbin "DATA/map/tile_tg_1.pal"
+.incbin "DATA/map/tile_tg_2.pal"
+
+MAP2_PAL:
+.incbin "DATA/tile_tg.pal"
+
+MAP3_PAL:
+.incbin "DATA/plateformer.pal"
+
+PCEDK_FONT_PAL:
+.incbin "DATA/font.pal"
+
+PCEDK_FONT_SPR:
+.incbin "DATA/font.spr"
+
+STR_HELLOWORLD:
+.data.s "HELLO WORLD!"
+
